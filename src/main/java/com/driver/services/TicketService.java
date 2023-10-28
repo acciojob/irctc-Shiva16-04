@@ -57,11 +57,11 @@ public class TicketService {
         Optional<Train> trainOptional=trainRepository.findById(bookTicketEntryDto.getTrainId());
         if(trainOptional.isPresent()){
             Train train =trainOptional.get();
-            List<String>trainList= Arrays.asList(train.getRoute().split(","));
+            List<String>stationList= Arrays.asList(train.getRoute().split(","));
 
-            for(int k=0; k<trainList.size(); k++){
-                if(trainList.get(k).equals(fromStation))i=k;
-                if(trainList.get(k).equals(toStation))j=k;
+            for(int k=0; k<stationList.size(); k++){
+                if(stationList.get(k).equals(fromStation))i=k;
+                if(stationList.get(k).equals(toStation))j=k;
             }
             if(i==-1||j==-1){
                 throw new Exception("Invalid stations");
@@ -70,13 +70,13 @@ public class TicketService {
 
         //handling 2nd edge case
         if(trainOptional.isPresent()){
-//            List<Ticket>bookedTickets=trainOptional.get().getBookedTickets();
-//            for(Ticket ticket:bookedTickets){
-//                cnt+=ticket.getPassengersList().size();
-//            }
-            int occupiedSeats=trainService.calculateAvailableSeats(new SeatAvailabilityEntryDto(bookTicketEntryDto.getTrainId(),
-                    bookTicketEntryDto.getFromStation(),bookTicketEntryDto.getToStation()));
-            if(occupiedSeats+bookTicketEntryDto.getNoOfSeats()>trainOptional.get().getNoOfSeats()){
+            List<Ticket>bookedTickets=trainOptional.get().getBookedTickets();
+            for(Ticket ticket:bookedTickets){
+                cnt+=ticket.getPassengersList().size();
+            }
+//            int occupiedSeats=trainService.calculateAvailableSeats(new SeatAvailabilityEntryDto(bookTicketEntryDto.getTrainId(),
+//                    bookTicketEntryDto.getFromStation(),bookTicketEntryDto.getToStation()));
+            if(cnt+bookTicketEntryDto.getNoOfSeats()>trainOptional.get().getNoOfSeats()){
                 throw new Exception("Less tickets are available");
             }
         }
