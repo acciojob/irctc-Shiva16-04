@@ -2,6 +2,8 @@ package com.driver.services;
 
 
 import com.driver.EntryDto.BookTicketEntryDto;
+import com.driver.EntryDto.SeatAvailabilityEntryDto;
+import com.driver.Transformers.TicketTransformer;
 import com.driver.model.Passenger;
 import com.driver.model.Ticket;
 import com.driver.model.Train;
@@ -12,7 +14,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class TicketService {
@@ -22,6 +26,8 @@ public class TicketService {
 
     @Autowired
     TrainRepository trainRepository;
+    @Autowired
+    TrainService trainService;
 
     @Autowired
     PassengerRepository passengerRepository;
@@ -41,8 +47,67 @@ public class TicketService {
         //Save the bookedTickets in the train Object
         //Also in the passenger Entity change the attribute bookedTickets by using the attribute bookingPersonId.
        //And the end return the ticketId that has come from db
+        String fromStation=bookTicketEntryDto.getFromStation().toString();
+        String toStation=bookTicketEntryDto.getToStation().toString();
+        int i=-1;
+        int j=-1;
+        int cnt=0;
 
-       return null;
+        //Handling 1st edge case
+        Optional<Train> trainOptional=trainRepository.findById(bookTicketEntryDto.getTrainId());
+        if(trainOptional.isPresent()){
+            Train train =trainOptional.get();
+            List<String>trainList= Arrays.asList(train.getRoute().split(","));
+
+            for(int k=0; k<trainList.size(); k++){
+                if(trainList.get(k).equals(fromStation))i=k;
+                if(trainList.get(k).equals(toStation))j=k;
+            }
+            if(i==-1||j==-1){
+                throw new Exception("Invalid stations");
+            }
+        }
+
+        //handling 2nd edge case
+        if(trainOptional.isPresent()){
+//            List<Ticket>bookedTickets=trainOptional.get().getBookedTickets();
+//            for(Ticket ticket:bookedTickets){
+//                cnt+=ticket.getPassengersList().size();
+//            }
+            int occupiedSeats=trainService.calculateAvailableSeats(new SeatAvailabilityEntryDto(bookTicketEntryDto.getTrainId(),
+                    bookTicketEntryDto.getFromStation(),bookTicketEntryDto.getToStation()));
+            if(occupiedSeats+bookTicketEntryDto.getNoOfSeats()>trainOptional.get().getNoOfSeats()){
+                throw new Exception("Less tickets are available");
+            }
+        }
+
+        //adding  passengers to the tickets
+        Ticket ticket= TicketTransformer.bookTicketEntryDTOToTicket(bookTicketEntryDto);
+        for(int Id:bookTicketEntryDto.getPassengerIds()){
+            Passenger passenger=passengerRepository.findById(Id).get();
+            ticket.getPassengersList().add(passenger);
+        }
+
+
+        //setting train
+        if(trainOptional.isPresent())ticket.setTrain(trainOptional.get());
+
+
+        //calculating fare
+        int fare=(j-i)*300*cnt;
+        ticket.setTotalFare(fare);
+
+
+        //bidirectional mapping of ticket with the person who booked ticket
+        Passenger passengerBooked=passengerRepository.findById(bookTicketEntryDto.getBookingPersonId()).get();
+        passengerBooked.getBookedTickets().add(ticket);
+
+        //bidirectional mapping of ticket with train
+        if(trainOptional.isPresent())trainOptional.get().getBookedTickets().add(ticket);
+
+        Ticket savedTicket=ticketRepository.save(ticket);
+
+        return savedTicket.getTicketId();
 
     }
 }
