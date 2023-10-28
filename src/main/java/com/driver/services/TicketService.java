@@ -26,8 +26,6 @@ public class TicketService {
 
     @Autowired
     TrainRepository trainRepository;
-    @Autowired
-    TrainService trainService;
 
     @Autowired
     PassengerRepository passengerRepository;
@@ -74,8 +72,6 @@ public class TicketService {
             for(Ticket ticket:bookedTickets){
                 cnt+=ticket.getPassengersList().size();
             }
-//            int occupiedSeats=trainService.calculateAvailableSeats(new SeatAvailabilityEntryDto(bookTicketEntryDto.getTrainId(),
-//                    bookTicketEntryDto.getFromStation(),bookTicketEntryDto.getToStation()));
             if(cnt+bookTicketEntryDto.getNoOfSeats()>trainOptional.get().getNoOfSeats()){
                 throw new Exception("Less tickets are available");
             }
@@ -84,8 +80,9 @@ public class TicketService {
         //adding  passengers to the tickets
         Ticket ticket= TicketTransformer.bookTicketEntryDTOToTicket(bookTicketEntryDto);
         for(int Id:bookTicketEntryDto.getPassengerIds()){
-            Passenger passenger=passengerRepository.findById(Id).get();
-            ticket.getPassengersList().add(passenger);
+            Optional<Passenger> passengerOptional=passengerRepository.findById(Id);
+            if(passengerOptional.isPresent())
+            ticket.getPassengersList().add(passengerOptional.get());
         }
 
 
@@ -99,8 +96,8 @@ public class TicketService {
 
 
         //bidirectional mapping of ticket with the person who booked ticket
-        Passenger passengerBooked=passengerRepository.findById(bookTicketEntryDto.getBookingPersonId()).get();
-        passengerBooked.getBookedTickets().add(ticket);
+        Optional<Passenger> passengerBookedOptional=passengerRepository.findById(bookTicketEntryDto.getBookingPersonId());
+        if(passengerBookedOptional.isPresent())passengerBookedOptional.get().getBookedTickets().add(ticket);
 
         //bidirectional mapping of ticket with train
         if(trainOptional.isPresent())trainOptional.get().getBookedTickets().add(ticket);
